@@ -4,11 +4,12 @@ import Svg, { Path } from 'react-native-svg';
 type CheckProps = {
   width?: number | string;
   height?: number | string;
+  style?: any;
 };
 
-const Check: React.FC<CheckProps> = ({ width = 20, height = 20 }) => {
+const Check: React.FC<CheckProps> = ({ width = 20, height = 20, style = {} }) => {
   return (
-    <Svg width={width} height={height} fill="none" viewBox={`0 0 20 22`}>
+    <Svg style={style} width={width} height={height} fill="none" viewBox={`0 0 20 22`}>
       <Path
         stroke="#024364"
         strokeLinecap="round"

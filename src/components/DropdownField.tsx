@@ -1,11 +1,12 @@
-import { Icon, Item, Label, Picker, View } from 'native-base';
+import { Label, View } from 'native-base';
+import ModalDropdown from 'react-native-modal-dropdown';
 import React from 'react';
 import { PickerItemProps, StyleSheet, PickerProps } from 'react-native';
-import key from 'weak-key';
+import DropdownIcon from '../../assets/icons/Dropdown';
 
 import { colors } from '../../theme';
 import i18n from '../locale/i18n';
-import { FieldWrapper, screenWidth, isAndroid } from './Screen';
+import { FieldWrapper, screenWidth } from './Screen';
 import { ValidationError } from './ValidationError';
 
 interface DropdownFieldProps {
@@ -20,62 +21,59 @@ interface DropdownFieldProps {
   onlyPicker?: boolean;
 }
 
-type DropdownPickerProps = Omit<DropdownFieldProps, 'label'>;
+type State = {
+  items?: PickerItemProps[];
+  options?: string[];
+};
 
-const DropdownPicker = (props: DropdownPickerProps) => {
-  const { placeholder, selectedValue, onValueChange, androidDefaultLabel, onlyPicker, error, ...pickerProps } = props;
-  const pickerStyle = onlyPicker ? {} : styles.picker;
-  const itemStyle = error ? styles.errorHighlight : {};
-  const items = props.items ?? [
-    { label: i18n.t('picker-no'), value: 'no' },
-    { label: i18n.t('picker-yes'), value: 'yes' },
-  ];
+class DropdownField extends React.Component<DropdownFieldProps, State> {
+  state = {
+    items: [],
+    options: [],
+  };
 
-  if (isAndroid) {
-    if (androidDefaultLabel) {
-      items.unshift({ label: androidDefaultLabel, value: '' });
-    } else if (!items.find((item) => item.value === selectedValue)) {
-      items.unshift({ label: i18n.t('choose-one-of-these-options'), value: selectedValue });
-    }
+  componentDidMount() {
+    let items = this.props.items ?? [
+      { label: i18n.t('picker-no'), value: 'no' },
+      { label: i18n.t('picker-yes'), value: 'yes' },
+    ];
+
+    this.setState({ items, options: items.map((item) => item.label) });
   }
 
-  return (
-    <Picker
-      mode="dropdown"
-      placeholder={placeholder} // Placeholder not supported on android
-      selectedValue={selectedValue}
-      onValueChange={onValueChange}
-      iosIcon={<Icon name="arrow-down" />}
-      itemTextStyle={{ textAlign: 'left' }}
-      style={pickerStyle}
-      {...pickerProps}>
-      {items.map((i) => (
-        <Picker.Item color={i.value ? undefined : colors.tertiary} key={key(i)} label={i.label} value={i.value} />
-      ))}
-    </Picker>
-  );
-};
+  onValueChange = (id: any, label: any) => {
+    if (id !== -1) {
+      this.props.onValueChange(this.state.items.find((item: PickerItemProps) => item.label === label)?.value);
+    }
+  };
 
-const DropdownField = (props: DropdownFieldProps) => {
-  // Can be used as a yes/no dropdown field by leaving props.items blank.
-  const { label, error, onlyPicker, ...more } = props;
+  render() {
+    // Can be used as a yes/no dropdown field by leaving props.items blank.
+    const { label, error, onlyPicker, selectedValue } = this.props;
+    const { options } = this.state;
 
-  return onlyPicker ? (
-    <DropdownPicker onlyPicker={onlyPicker} {...more} />
-  ) : (
-    <FieldWrapper style={styles.fieldWrapper}>
-      <Label style={styles.labelStyle}>{label}</Label>
-      <View style={styles.dropdownWrapper}>
-        <DropdownPicker {...more} />
-      </View>
-      {!!error && (
-        <View style={{ marginTop: 10 }}>
-          <ValidationError error={error} />
-        </View>
-      )}
-    </FieldWrapper>
-  );
-};
+    return (
+      <FieldWrapper style={styles.fieldWrapper}>
+        {onlyPicker ? null : <Label style={styles.labelStyle}>{label}</Label>}
+        <ModalDropdown
+          style={styles.dropdownButton}
+          options={options}
+          defaultValue={selectedValue}
+          onSelect={this.onValueChange}>
+          <View style={styles.dropdownButtonContainer}>
+            <Label style={styles.dropdownValue}>{selectedValue || 'Choose one of the options'}</Label>
+            <DropdownIcon width={15} height={19} />
+          </View>
+        </ModalDropdown>
+        {!!error && (
+          <View style={{ marginTop: 10 }}>
+            <ValidationError error={error} />
+          </View>
+        )}
+      </FieldWrapper>
+    );
+  }
+}
 
 const styles = StyleSheet.create({
   fieldWrapper: {
@@ -92,14 +90,23 @@ const styles = StyleSheet.create({
     width: screenWidth - 16,
     marginTop: 12,
   },
-  dropdownWrapper: {
-    borderBottomWidth: 1,
-    borderColor: colors.tertiary,
-  },
   errorHighlight: {
     borderBottomWidth: 1,
     borderColor: colors.feedbackBad,
   },
+  dropdownButton: {
+    backgroundColor: colors.backgroundTertiary,
+    height: 48,
+    borderRadius: 8,
+  },
+  dropdownButtonContainer: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+  },
+  dropdownValue: { color: colors.secondary },
 });
 
 export default DropdownField;

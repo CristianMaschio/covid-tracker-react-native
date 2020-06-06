@@ -6,7 +6,7 @@ import ModalDropdown from 'react-native-modal-dropdown';
 import DropdownIcon from '../../assets/icons/Dropdown';
 import { colors } from '../../theme';
 import i18n from '../locale/i18n';
-import { FieldWrapper, screenWidth } from './Screen';
+import { FieldWrapper } from './Screen';
 import { ValidationError } from './ValidationError';
 
 interface DropdownFieldProps {
@@ -24,12 +24,14 @@ interface DropdownFieldProps {
 type State = {
   items?: PickerItemProps[];
   options?: string[];
+  dropdownWidth?: number;
 };
 
 class DropdownField extends React.Component<DropdownFieldProps, State> {
   state = {
     items: [],
     options: [],
+    dropdownWidth: 0,
   };
 
   componentDidMount() {
@@ -41,6 +43,10 @@ class DropdownField extends React.Component<DropdownFieldProps, State> {
     this.setState({ items, options: items.map((item) => item.label) });
   }
 
+  setDropdownWidth = (event: any) => {
+    this.setState({ dropdownWidth: event.nativeEvent.layout.width });
+  };
+
   onValueChange = (id: any, label: any) => {
     if (id !== -1) {
       this.props.onValueChange(this.state.items.find((item: PickerItemProps) => item.label === label)?.value);
@@ -50,7 +56,7 @@ class DropdownField extends React.Component<DropdownFieldProps, State> {
   render() {
     // Can be used as a yes/no dropdown field by leaving props.items blank.
     const { label, error, onlyPicker, selectedValue } = this.props;
-    const { options } = this.state;
+    const { options, dropdownWidth } = this.state;
 
     return (
       <FieldWrapper style={styles.fieldWrapper}>
@@ -59,8 +65,10 @@ class DropdownField extends React.Component<DropdownFieldProps, State> {
           style={styles.dropdownButton}
           options={options}
           defaultValue={selectedValue}
-          onSelect={this.onValueChange}>
-          <View style={styles.dropdownButtonContainer}>
+          onSelect={this.onValueChange}
+          dropdownStyle={{ ...styles.dropdownStyle, width: dropdownWidth }}
+          dropdownTextStyle={styles.dropdownTextStyle}>
+          <View onLayout={this.setDropdownWidth} style={styles.dropdownButtonContainer}>
             <Label style={styles.dropdownValue}>{selectedValue || 'Choose one of the options'}</Label>
             <DropdownIcon width={15} height={19} />
           </View>
@@ -82,7 +90,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
   },
   labelStyle: {
-    fontSize: 15,
+    fontSize: 16,
     lineHeight: 30,
     color: colors.primary,
   },
@@ -106,6 +114,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 12,
+  },
+  dropdownStyle: {
+    marginTop: 8,
+    borderRadius: 8,
+    elevation: 20,
+  },
+  dropdownTextStyle: {
+    backgroundColor: 'transparent',
+    fontSize: 16,
+    lineHeight: 30,
+    color: colors.primary,
   },
   dropdownValue: { color: colors.secondary },
 });

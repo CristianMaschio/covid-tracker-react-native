@@ -1,9 +1,9 @@
 import { Label, View } from 'native-base';
-import ModalDropdown from 'react-native-modal-dropdown';
 import React from 'react';
 import { PickerItemProps, StyleSheet, PickerProps } from 'react-native';
-import DropdownIcon from '../../assets/icons/Dropdown';
+import ModalDropdown from 'react-native-modal-dropdown';
 
+import DropdownIcon from '../../assets/icons/Dropdown';
 import { colors } from '../../theme';
 import i18n from '../locale/i18n';
 import { FieldWrapper, screenWidth } from './Screen';
@@ -33,7 +33,7 @@ class DropdownField extends React.Component<DropdownFieldProps, State> {
   };
 
   componentDidMount() {
-    let items = this.props.items ?? [
+    const items = this.props.items ?? [
       { label: i18n.t('picker-no'), value: 'no' },
       { label: i18n.t('picker-yes'), value: 'yes' },
     ];
@@ -87,8 +87,9 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   picker: {
-    width: screenWidth - 16,
-    marginTop: 12,
+    width: '100%',
+    height: 48,
+    paddingRight: 32,
   },
   errorHighlight: {
     borderBottomWidth: 1,

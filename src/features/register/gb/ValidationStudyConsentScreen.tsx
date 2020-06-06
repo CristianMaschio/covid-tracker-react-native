@@ -1,15 +1,18 @@
+import { chevronLeft } from '@assets';
+import { CheckboxItem, CheckboxList } from '@covid/components/Checkbox';
+import { Header } from '@covid/components/Screen';
+import { BrandedButton, ClickableText, HeaderText, RegularBoldText, RegularText } from '@covid/components/Text';
+import Analytics, { events } from '@covid/core/Analytics';
+import UserService from '@covid/core/user/UserService';
 import { RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { Body, CheckBox, ListItem } from 'native-base';
+import { colors } from '@theme';
 import React, { Component } from 'react';
-import { Linking, ScrollView, StyleSheet, View } from 'react-native';
-import { colors } from '../../../../theme';
-import { CheckboxItem, CheckboxList } from '../../../components/Checkbox';
-import { BrandedButton, ClickableText, RegularBoldText, RegularText } from '../../../components/Text';
-import UserService from '../../../core/user/UserService';
-import { ScreenParamList } from '../../ScreenParamList';
+import { Image, Linking, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
 import Navigator from '../../Navigation';
+import { ScreenParamList } from '../../ScreenParamList';
 
 type PropsType = {
   navigation: StackNavigationProp<ScreenParamList, 'ValidationStudyConsent'>;
@@ -20,6 +23,7 @@ interface TermsState {
   agreeToAbove: boolean;
   anonymizedData: boolean;
   reContacted: boolean;
+  submitting: boolean;
 }
 
 export default class ValidationStudyConsentScreen extends Component<PropsType, TermsState> {
@@ -31,6 +35,7 @@ export default class ValidationStudyConsentScreen extends Component<PropsType, T
       agreeToAbove: false,
       anonymizedData: false,
       reContacted: false,
+      submitting: false,
     };
   }
 
@@ -46,11 +51,11 @@ export default class ValidationStudyConsentScreen extends Component<PropsType, T
     this.setState({ reContacted: !this.state.reContacted });
   };
 
-  handleAgreeClicked = async () => {
-    if (this.state.agreeToAbove) {
-      this.userService.setValidationStudyResponse(true, this.state.anonymizedData, this.state.reContacted).then((i) => {
-        console.log(JSON.stringify(i.data));
-      });
+  handleAgreeClicked = () => {
+    if (this.state.agreeToAbove && !this.state.submitting) {
+      this.setState({ submitting: true });
+      Analytics.track(events.JOIN_STUDY);
+      this.userService.setValidationStudyResponse(true, this.state.anonymizedData, this.state.reContacted);
       Navigator.resetToProfileStartAssessment(this.props.route.params.currentPatient);
     }
   };
@@ -60,16 +65,24 @@ export default class ValidationStudyConsentScreen extends Component<PropsType, T
       <View style={{ flex: 1, backgroundColor: colors.white }}>
         <SafeAreaView style={styles.mainContainer}>
           <ScrollView>
-            <RegularBoldText>VALIDATION STUDY INFORMED CONSENT{'\n'}</RegularBoldText>
+            <TouchableOpacity style={styles.backIcon} onPress={this.props.navigation.goBack}>
+              <Image source={chevronLeft} />
+            </TouchableOpacity>
 
-            <RegularBoldText>About this consent form{'\n'}</RegularBoldText>
-            <RegularText>
-              Please read this form carefully. It tells you important information about a research study.
-              {'\n\n'}
-              If you have any questions about the research or about this form, please ask. Taking part in this research
-              study is up to you.
-              {'\n'}
-            </RegularText>
+            <Header>
+              <HeaderText style={styles.header}>Study Consent</HeaderText>
+            </Header>
+
+            <View style={{ borderWidth: 0.5, borderColor: colors.primary, marginBottom: 64 }} />
+
+            <RegularBoldText>INFORMATION SHEET FOR PARTICIPANTS{'\n'}</RegularBoldText>
+
+            <RegularText>Ethical Clearance Reference Number: LRS-19/20-18856{'\n'}</RegularText>
+
+            <RegularBoldText>YOU WILL BE EMAILED A COPY OF THIS INFORMATION SHEET{'\n'}</RegularBoldText>
+
+            <RegularBoldText>Title of project{'\n'}</RegularBoldText>
+            <RegularText>Testing the accuracy of a digital test to diagnose COVID-19{'\n'}</RegularText>
 
             <RegularBoldText>Invitation Paragraph{'\n'}</RegularBoldText>
             <RegularText>
@@ -79,7 +92,7 @@ export default class ValidationStudyConsentScreen extends Component<PropsType, T
               following information carefully and discuss it with others if you wish. Ask study researchers if there is
               anything that is not clear or if you would like more information by emailing us at{' '}
               <ClickableText onPress={() => this.openUrl('mailto:covidtrackingquestions@kcl.ac.uk')}>
-                covidtrackingquestion@kcl.ac.uk
+                covidtrackingquestions@kcl.ac.uk
               </ClickableText>
               {'\n'}
             </RegularText>
@@ -100,14 +113,6 @@ export default class ValidationStudyConsentScreen extends Component<PropsType, T
               {'\n\n'}
               This study therefore aims to evaluate the use of this digital test as a diagnostic tool for Covid-19
               infection.
-              {'\n'}
-            </RegularText>
-
-            <RegularBoldText>How long will I take part in this research study?{'\n'}</RegularBoldText>
-            <RegularText>
-              Your use of this mobile application is completely voluntary. You can use it as little or as much as you
-              would like and can stop using it at any time. We find that answering the series of questions takes a
-              matter of minutes (no more than 10 minutes on average).
               {'\n'}
             </RegularText>
 
@@ -134,7 +139,7 @@ export default class ValidationStudyConsentScreen extends Component<PropsType, T
               either by ordering a testing kit in the mail or visiting a Regional Testing Centre. Alternatively, Zoe may
               apply for testing on your behalf to the Department of Health and Social Care, through an online platform
               where Zoe will share your name, mobile phone number, and email address to register you for testing. Swab
-              testing involves collecting a sample to test if you have COVID by inserting a long swab (like a long
+              testing involves collecting a sample to test if you have COVID by inserting a long swab (like a long
               cotton wool bud) into the back of your nose or mouth and rotating the swab several times. Organising and
               completing the Covid-19 test is optional. Once you have received your test result, you will be asked to
               report it in the Covid-19 Symptom Study app.
@@ -142,16 +147,9 @@ export default class ValidationStudyConsentScreen extends Component<PropsType, T
               The researchers conducting this study have been granted the allowance to test up to 10,000 individuals per
               week in this way. This number of swab tests may be insufficient to test all the participants in this study
               who qualify for testing. Participants who are eligible for swab testing, but do not complete their test or
-              do not report their test result, will receive feedback on the likelihood that they have SARS-CoV-2 based
-              on their individual reported symptoms as predicted by the prediction model. These predictions will be
+              do not report their test result, may receive feedback on the likelihood that they have SARS-CoV-2 based on
+              their individual reported symptoms as predicted by the prediction model. These predictions will be
               communicated to the participant using the app on behalf of researchers at King’s College London.
-              {'\n'}
-            </RegularText>
-
-            <RegularBoldText>What are the possible benefits from being in this research study?{'\n'}</RegularBoldText>
-            <RegularText>
-              There are no direct benefits to you for taking part in this study. Your participation may contribute more
-              widely, with all the other participants to the advancement of research into the COVID virus.
               {'\n'}
             </RegularText>
 
@@ -177,9 +175,11 @@ export default class ValidationStudyConsentScreen extends Component<PropsType, T
 
             <RegularText>
               By participating in this research, you will be contributing to the advancement of science and research on
-              Covid-19. You will also receive your personal prediction of the likelihood that you are infected with
-              SARS-CoV-2 based on your reported symptoms. This is provided for your interest. The prediction is not a
-              clinical diagnostic tool, it has not been validated and you must not use it to make any health decisions.
+              Covid-19. You may receive a prediction of the likelihood that you are infected with SARS-CoV-2 based on
+              your reported symptoms; feedback will be provided if our prediction algorithm is approved by the Medicines
+              and Healthcare products Regulatory Agency (MHRA). This is provided for your interest. The prediction is
+              not a clinical diagnostic tool, it has not been validated and you must not use it to make any health
+              decisions.
               {'\n'}
             </RegularText>
 
@@ -190,7 +190,7 @@ export default class ValidationStudyConsentScreen extends Component<PropsType, T
               user of the Covid-19 Symptom Study app, you have consented to Zoe’s terms including the{' '}
               <ClickableText
                 onPress={() => this.props.navigation.navigate('PrivacyPolicyUK', { viewOnly: this.viewOnly })}>
-                Privacy Policy
+                UK Privacy Policy
               </ClickableText>{' '}
               which is available from the app menu at all times. All these terms continue to apply to the present study.
               Your anonymised data may be shared with other members of the clinical or scientific community as outlined
@@ -226,7 +226,7 @@ export default class ValidationStudyConsentScreen extends Component<PropsType, T
             <RegularText>
               This study is being funded by King’s College London and Zoe in order to help with the coronavirus
               pandemic. The Department of Health is paying for the swab tests as part of its program of testing people
-              in the community for COVID.
+              in the community for Covid-19.
               {'\n'}
             </RegularText>
 
@@ -242,9 +242,9 @@ export default class ValidationStudyConsentScreen extends Component<PropsType, T
             <RegularBoldText>Who should I contact for further information?{'\n'}</RegularBoldText>
             <RegularText>
               If you have any questions or require more information about this study, please contact the study Principle
-              Investigator, Professor Tim Spector at:{' '}
+              Investigator, Professor Tim Spector at{' '}
               <ClickableText onPress={() => this.openUrl('mailto:covidtrackingquestions@kcl.ac.uk')}>
-                covidtrackingquestion@kcl.ac.uk
+                covidtrackingquestions@kcl.ac.uk
               </ClickableText>
               {'\n'}
               For withdrawal from the study please contact Zoe Global Ltd at{' '}
@@ -258,18 +258,23 @@ export default class ValidationStudyConsentScreen extends Component<PropsType, T
             <RegularText>
               If this research has harmed you in any way or if you wish to make a complaint about the conduct of the
               study you can contact King's College London using the details below for further advice and information:{' '}
-              The Chair, BDM Research Ethics Subcommittee, King’s College London, rec@kcl.ac.uk.{' '}
-              <ClickableText onPress={() => this.openUrl('mailto:rec@kcl.ac.uk')}>rec@kcl.ac.uk</ClickableText>
-              {'\n'}
+              The Chair, BDM Research Ethics Subcommittee, King’s College London,{' '}
+              <ClickableText onPress={() => this.openUrl('mailto:rec@kcl.ac.uk')}>rec@kcl.ac.uk</ClickableText>.{'\n'}
             </RegularText>
 
             <RegularBoldText>
               Thank you for reading this information sheet and for considering taking part in this research.{'\n'}
             </RegularBoldText>
 
+            <RegularBoldText>CONSENT FORM FOR PARTICIPANTS IN RESEARCH PROJECTS{'\n'}</RegularBoldText>
+            <RegularText>
+              Please complete this form after you have read the Information Sheet and/or listened to an explanation
+              about the research{'\n'}
+            </RegularText>
+
             <RegularBoldText>Statement of consent:{'\n'}</RegularBoldText>
             <RegularText>
-              - I confirm that I have read and understood the information sheet dated 19/05/20, version number 2.0, for
+              - I confirm that I have read and understood the information sheet dated 27/05/20, version number 3.0, for
               the above project. I have had the opportunity to consider the information and asked questions which have
               been answered to my satisfaction.
               {'\n'}
@@ -316,7 +321,7 @@ export default class ValidationStudyConsentScreen extends Component<PropsType, T
             {!this.viewOnly && (
               <CheckboxList>
                 <CheckboxItem value={this.state.agreeToAbove} onChange={this.handleAgreeToAboveChange}>
-                  I agree to the above.
+                  I agree to the above
                 </CheckboxItem>
                 <CheckboxItem value={this.state.anonymizedData} onChange={this.handleAnonymizedChange}>
                   I agree that the research team may use my anonymised data for future research (optional)
@@ -335,7 +340,7 @@ export default class ValidationStudyConsentScreen extends Component<PropsType, T
               hideLoading
               enable={this.state.agreeToAbove}
               onPress={this.handleAgreeClicked}>
-              Take part
+              {this.state.agreeToAbove ? 'Take part' : 'Scroll down to give consent'}
             </BrandedButton>
           )}
         </SafeAreaView>
@@ -354,9 +359,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: colors.backgroundPrimary,
     marginHorizontal: 24,
+  },
+  backIcon: {
+    alignSelf: 'flex-start',
+    marginTop: 32,
+  },
+  header: {
     marginVertical: 24,
+    textAlign: 'center',
   },
   button: {
-    marginTop: 20,
+    marginVertical: 20,
   },
 });

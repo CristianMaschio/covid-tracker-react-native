@@ -95,11 +95,13 @@ jobs:
     working_directory: ~/covid-react
     steps:
       - build
+      - run: npm run test:i18n 'sv-SE'
+      - run: npm run test:i18n 'es'
       - run: npm run lint
       - run: npm run prettier
       - run: echo "API_URL=" > .env
       - run: echo "AMPLITUDE_KEY=" >> .env
-      - run: npm test
+      - run: npm test -- --maxWorkers=2 --ci
   deploy:
     executor: node
     working_directory: ~/covid-react

@@ -1,17 +1,17 @@
-import { Notifications } from 'expo';
-import Constants from 'expo-constants';
-import * as Permissions from 'expo-permissions';
-import { PushToken, IPushTokenRemoteClient } from './types';
-import { now, aWeekAgo, isDateBefore } from './utils/datetime';
-import { isAndroid } from './utils/platform';
-import { IStorageService } from './LocalStorageService';
-import { TokenInfoResponse, TokenInfoRequest } from './user/dto/UserAPIContracts';
-import { IApiClient } from './api/ApiClient';
+import { IStorageService } from '../LocalStorageService';
+import { IApiClient } from '../api/ApiClient';
+import { PushToken, IPushTokenRemoteClient } from '../types';
+import { TokenInfoResponse, TokenInfoRequest } from '../user/dto/UserAPIContracts';
+import { now, aWeekAgo, isDateBefore } from '../utils/datetime';
+import { isAndroid } from '../utils/platform';
 
 const KEY_PUSH_TOKEN = 'PUSH_TOKEN';
 const PLATFORM_ANDROID = 'ANDROID';
 const PLATFORM_IOS = 'IOS';
-const STATUS_GRANTED = 'granted';
+
+export interface IPushTokenEnvironment {
+  getPushToken(): Promise<string | null>;
+}
 
 const getPlatform = () => {
   return isAndroid ? PLATFORM_ANDROID : PLATFORM_IOS;
@@ -19,28 +19,15 @@ const getPlatform = () => {
 
 const createTokenDoc = (token: string): PushToken => {
   return {
-    token: token,
+    token,
     lastUpdated: now(),
     platform: getPlatform(),
   };
 };
 
-const getPushTokenFromExpo = async (): Promise<string | null> => {
-  let token = null;
-  try {
-    const { status } = await Permissions.askAsync(Permissions.NOTIFICATIONS);
-    if (status === STATUS_GRANTED) {
-      token = await Notifications.getExpoPushTokenAsync();
-    }
-  } catch (error) {
-    // silently discard errors.
-    // TODO: Log with future-available service at some point.
-  }
-  return token;
-};
-
 export class PushNotificationApiClient implements IPushTokenRemoteClient {
   apiClient: IApiClient;
+
   constructor(apiClient: IApiClient) {
     this.apiClient = apiClient;
   }
@@ -50,27 +37,29 @@ export class PushNotificationApiClient implements IPushTokenRemoteClient {
       ...pushToken,
       active: true,
     } as TokenInfoRequest;
-    return this.apiClient.post<TokenInfoResponse>(`/tokens/`, tokenDoc);
+    return this.apiClient.post<TokenInfoRequest, TokenInfoResponse>(`/tokens/`, tokenDoc);
   }
 }
 
 export default class PushNotificationService {
   apiClient: IPushTokenRemoteClient;
   storage: IStorageService;
+  environment: IPushTokenEnvironment;
 
-  constructor(apiClient: IPushTokenRemoteClient, storage: IStorageService) {
+  constructor(apiClient: IPushTokenRemoteClient, storage: IStorageService, environment: IPushTokenEnvironment) {
     this.apiClient = apiClient;
     this.storage = storage;
+    this.environment = environment;
   }
 
   private async createPushToken(): Promise<PushToken | null> {
-    const token = await getPushTokenFromExpo();
+    const token = await this.environment.getPushToken();
     return token ? createTokenDoc(token) : null;
   }
 
   private async getSavedPushToken(): Promise<PushToken | null> {
     const pushToken = await this.storage.getObject<PushToken>(KEY_PUSH_TOKEN);
-    return pushToken || null;
+    return pushToken ?? null;
   }
 
   private async savePushToken(pushToken: PushToken) {
@@ -101,14 +90,12 @@ export default class PushNotificationService {
   }
 
   async initPushToken() {
-    if (Constants.appOwnership !== 'expo') {
-      const pushToken = await this.createPushToken();
-      if (pushToken) {
-        try {
-          await this.sendPushToken(pushToken);
-        } catch (error) {
-          // Fail silently
-        }
+    const pushToken = await this.createPushToken();
+    if (pushToken) {
+      try {
+        await this.sendPushToken(pushToken);
+      } catch (error) {
+        // Fail silently
       }
     }
   }

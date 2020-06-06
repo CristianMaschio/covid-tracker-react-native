@@ -1,26 +1,27 @@
+import { userService } from '@covid/Services';
+import DropdownField from '@covid/components/DropdownField';
+import { GenericTextField } from '@covid/components/GenericTextField';
+import ProgressStatus from '@covid/components/ProgressStatus';
+import Screen, { FieldWrapper, Header, ProgressBlock } from '@covid/components/Screen';
+import { BrandedButton, ErrorText, HeaderText } from '@covid/components/Text';
+import { ValidatedTextInput } from '@covid/components/ValidatedTextInput';
+import { ValidationError, ValidationErrors } from '@covid/components/ValidationError';
+import { isUSCountry } from '@covid/core/user/UserService';
+import { PatientInfosRequest } from '@covid/core/user/dto/UserAPIContracts';
+import { cleanIntegerVal, cleanFloatVal } from '@covid/core/utils/number';
+import i18n from '@covid/locale/i18n';
 import { RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Formik, FormikProps } from 'formik';
-import { cloneDeep } from 'lodash';
-import { Form, Icon, Item, Label, Picker, Text } from 'native-base';
+import { Form, Item, Label, Text } from 'native-base';
 import React, { Component } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import * as Yup from 'yup';
 
-import DropdownField from '../../components/DropdownField';
-import { GenericTextField } from '../../components/GenericTextField';
-import ProgressStatus from '../../components/ProgressStatus';
-import Screen, { FieldWrapper, Header, ProgressBlock, screenWidth } from '../../components/Screen';
-import { BrandedButton, ErrorText, HeaderText } from '../../components/Text';
-import { ValidatedTextInput } from '../../components/ValidatedTextInput';
-import { ValidationError, ValidationErrors } from '../../components/ValidationError';
-import { isUSCountry } from '../../core/user/UserService';
-import { PatientInfosRequest } from '../../core/user/dto/UserAPIContracts';
-import i18n from '../../locale/i18n';
 import { ScreenParamList } from '../ScreenParamList';
+import { HeightData, HeightQuestion } from './fields/HeightQuestion';
 import { RaceEthnicityData, RaceEthnicityQuestion } from './fields/RaceEthnicityQuestion';
-import { cleanIntegerVal, cleanFloatVal } from '../../core/utils/number';
-import { userService } from '../../Services';
+import { WeightData, WeightQuestion } from './fields/WeightQuestion';
 
 const initialFormValues = {
   yearOfBirth: '',
@@ -28,14 +29,6 @@ const initialFormValues = {
   genderIdentity: '',
   genderIdentityDescription: '',
   postcode: '',
-  height: '',
-  feet: '',
-  inches: '',
-  heightUnit: 'ft',
-  weight: '',
-  stones: '',
-  pounds: '',
-  weightUnit: 'lbs',
 
   everExposed: '',
   houseboundProblems: 'no',
@@ -44,20 +37,11 @@ const initialFormValues = {
   mobilityAid: 'no',
 };
 
-export interface AboutYouData extends RaceEthnicityData {
+export interface AboutYouData extends RaceEthnicityData, HeightData, WeightData {
   yearOfBirth: string;
   sex: string;
   genderIdentity: string;
   genderIdentityDescription: string;
-
-  height: string;
-  feet: string;
-  inches: string;
-  heightUnit: string;
-  weight: string;
-  stones: string;
-  pounds: string;
-  weightUnit: string;
 
   postcode: string;
 
@@ -120,14 +104,14 @@ export default class AboutYouScreen extends Component<AboutYouProps, State> {
 
       userService
         .updatePatient(patientId, infos)
-        .then((response) => {
+        .then(() => {
           currentPatient.hasRaceEthnicityAnswer = formData.race.length > 0;
           currentPatient.isFemale = formData.sex !== 'male';
           currentPatient.isPeriodCapable =
             !['', 'male', 'pfnts'].includes(formData.sex) || !['', 'male', 'pfnts'].includes(formData.genderIdentity);
           this.props.navigation.navigate('YourHealth', { currentPatient });
         })
-        .catch((err) => {
+        .catch(() => {
           this.setState({ errorMessage: i18n.t('something-went-wrong') });
         })
         .then(() => {
@@ -292,13 +276,11 @@ export default class AboutYouScreen extends Component<AboutYouProps, State> {
     ];
 
     const getInitialFormValues = (): AboutYouData => {
-      const features = userService.getConfig();
-
       return {
         ...initialFormValues,
-        heightUnit: features.defaultHeightUnit,
-        weightUnit: features.defaultWeightUnit,
         ...RaceEthnicityQuestion.initialFormValues(),
+        ...HeightQuestion.initialFormValues(),
+        ...WeightQuestion.initialFormValues(),
       };
     };
 
@@ -321,24 +303,14 @@ export default class AboutYouScreen extends Component<AboutYouProps, State> {
           {(props) => {
             return (
               <Form>
-                <FieldWrapper>
-                  <Item stackedLabel style={styles.textItemStyle}>
-                    <Label>{i18n.t('what-year-were-you-born')}</Label>
-                    <ValidatedTextInput
-                      placeholder={i18n.t('placeholder-year-of-birth')}
-                      value={props.values.yearOfBirth}
-                      onChangeText={props.handleChange('yearOfBirth')}
-                      onBlur={props.handleBlur('yearOfBirth')}
-                      error={props.touched.yearOfBirth && props.errors.yearOfBirth}
-                      returnKeyType="next"
-                      onSubmitEditing={() => {
-                        /* this.passwordComponent.focus(); */
-                      }}
-                      keyboardType="numeric"
-                    />
-                  </Item>
-                  {!!props.errors.yearOfBirth && <ValidationError error={props.errors.yearOfBirth} />}
-                </FieldWrapper>
+                <GenericTextField
+                  formikProps={props}
+                  label={i18n.t('what-year-were-you-born')}
+                  placeholder={i18n.t('placeholder-year-of-birth')}
+                  name="yearOfBirth"
+                  keyboardType="numeric"
+                  showError
+                />
 
                 <DropdownField
                   placeholder={i18n.t('placeholder-sex')}
@@ -362,7 +334,7 @@ export default class AboutYouScreen extends Component<AboutYouProps, State> {
                     formikProps={props}
                     label={i18n.t('label-gender-identity-other')}
                     name="genderIdentityDescription"
-                    placeholder="Optional"
+                    placeholder={i18n.t('placeholder-optional')}
                   />
                 )}
 
@@ -372,212 +344,18 @@ export default class AboutYouScreen extends Component<AboutYouProps, State> {
                   formikProps={props as FormikProps<RaceEthnicityData>}
                 />
 
-                <FieldWrapper>
-                  <Item stackedLabel style={styles.textItemStyle}>
-                    <Label>{i18n.t('your-height')}</Label>
-                    {isUSCountry() ? (
-                      <View style={styles.primaryFieldRow}>
-                        <View style={styles.tertiaryField}>
-                          <ValidatedTextInput
-                            placeholder={i18n.t('placeholder-feet')}
-                            value={props.values.feet}
-                            onChangeText={props.handleChange('feet')}
-                            onBlur={props.handleBlur('feet')}
-                            error={props.touched.feet && props.errors.feet}
-                            returnKeyType="next"
-                            onSubmitEditing={() => {
-                              /* this.passwordComponent.focus(); */
-                            }}
-                            keyboardType="numeric"
-                          />
-                        </View>
-                        <View style={styles.tertiaryField}>
-                          <ValidatedTextInput
-                            placeholder={i18n.t('placeholder-inches')}
-                            value={props.values.inches}
-                            onChangeText={props.handleChange('inches')}
-                            onBlur={props.handleBlur('inches')}
-                            error={props.touched.inches && props.errors.inches}
-                            returnKeyType="next"
-                            onSubmitEditing={() => {
-                              /* this.passwordComponent.focus(); */
-                            }}
-                            keyboardType="numeric"
-                          />
-                        </View>
-                      </View>
-                    ) : (
-                      <View style={styles.fieldRow}>
-                        {props.values.heightUnit === 'cm' ? (
-                          <View style={styles.primaryField}>
-                            <ValidatedTextInput
-                              placeholder={i18n.t('placeholder-height')}
-                              value={props.values.height}
-                              onChangeText={props.handleChange('height')}
-                              onBlur={props.handleBlur('height')}
-                              error={props.touched.height && props.errors.height}
-                              returnKeyType="next"
-                              onSubmitEditing={() => {
-                                /* this.passwordComponent.focus(); */
-                              }}
-                              keyboardType="numeric"
-                            />
-                          </View>
-                        ) : (
-                          <View style={styles.primaryFieldRow}>
-                            <View style={styles.tertiaryField}>
-                              <ValidatedTextInput
-                                placeholder={i18n.t('placeholder-feet')}
-                                value={props.values.feet}
-                                onChangeText={props.handleChange('feet')}
-                                onBlur={props.handleBlur('feet')}
-                                error={props.touched.feet && props.errors.feet}
-                                returnKeyType="next"
-                                onSubmitEditing={() => {
-                                  /* this.passwordComponent.focus(); */
-                                }}
-                                keyboardType="numeric"
-                              />
-                            </View>
-                            <View style={styles.tertiaryField}>
-                              <ValidatedTextInput
-                                placeholder={i18n.t('placeholder-inches')}
-                                value={props.values.inches}
-                                onChangeText={props.handleChange('inches')}
-                                onBlur={props.handleBlur('inches')}
-                                error={props.touched.inches && props.errors.inches}
-                                returnKeyType="next"
-                                onSubmitEditing={() => {
-                                  /* this.passwordComponent.focus(); */
-                                }}
-                                keyboardType="numeric"
-                              />
-                            </View>
-                          </View>
-                        )}
-                        <View style={styles.secondaryField}>
-                          <DropdownField
-                            onlyPicker
-                            selectedValue={props.values.heightUnit}
-                            onValueChange={props.handleChange('heightUnit')}
-                            items={[
-                              { label: 'ft', value: 'ft' },
-                              { label: 'cm', value: 'cm' },
-                            ]}
-                          />
-                        </View>
-                      </View>
-                    )}
-                  </Item>
-                  {props.errors.height && <ValidationError error={props.errors.height} />}
-                  {props.errors.feet && <ValidationError error={props.errors.feet} />}
-                  {props.errors.inches && <ValidationError error={props.errors.inches} />}
-                  {props.errors.heightUnit && <ValidationError error={props.errors.heightUnit} />}
-                </FieldWrapper>
+                <HeightQuestion formikProps={props as FormikProps<HeightData>} />
 
-                <FieldWrapper>
-                  <Item stackedLabel style={styles.textItemStyle}>
-                    <Label>{i18n.t('your-weight')}</Label>
-                    {isUSCountry() ? (
-                      <ValidatedTextInput
-                        placeholder={i18n.t('placeholder-pounds')}
-                        value={props.values.pounds}
-                        onChangeText={props.handleChange('pounds')}
-                        onBlur={props.handleBlur('pounds')}
-                        error={props.touched.pounds && props.errors.pounds}
-                        returnKeyType="next"
-                        onSubmitEditing={() => {
-                          /* this.passwordComponent.focus(); */
-                        }}
-                        keyboardType="numeric"
-                      />
-                    ) : (
-                      <View style={styles.fieldRow}>
-                        {props.values.weightUnit === 'kg' ? (
-                          <View style={styles.primaryField}>
-                            <ValidatedTextInput
-                              placeholder={i18n.t('placeholder-weight')}
-                              value={props.values.weight}
-                              onChangeText={props.handleChange('weight')}
-                              onBlur={props.handleBlur('weight')}
-                              error={props.touched.weight && props.errors.weight}
-                              returnKeyType="next"
-                              onSubmitEditing={() => {
-                                /* this.passwordComponent.focus(); */
-                              }}
-                              keyboardType="numeric"
-                            />
-                          </View>
-                        ) : (
-                          <View style={styles.primaryFieldRow}>
-                            <View style={styles.tertiaryField}>
-                              <ValidatedTextInput
-                                placeholder={i18n.t('placeholder-stones')}
-                                value={props.values.stones}
-                                onChangeText={props.handleChange('stones')}
-                                onBlur={props.handleBlur('stones')}
-                                error={props.touched.stones && props.errors.stones}
-                                returnKeyType="next"
-                                onSubmitEditing={() => {
-                                  /* this.passwordComponent.focus(); */
-                                }}
-                                keyboardType="numeric"
-                              />
-                            </View>
-                            <View style={styles.tertiaryField}>
-                              <ValidatedTextInput
-                                placeholder={i18n.t('placeholder-pounds')}
-                                value={props.values.pounds}
-                                onChangeText={props.handleChange('pounds')}
-                                onBlur={props.handleBlur('pounds')}
-                                error={props.touched.pounds && props.errors.pounds}
-                                returnKeyType="next"
-                                onSubmitEditing={() => {
-                                  /* this.passwordComponent.focus(); */
-                                }}
-                                keyboardType="numeric"
-                              />
-                            </View>
-                          </View>
-                        )}
-                        <View style={styles.secondaryField}>
-                          <Picker
-                            mode="dropdown"
-                            placeholder="weightUnit"
-                            selectedValue={props.values.weightUnit}
-                            onValueChange={props.handleChange('weightUnit')}
-                            iosIcon={<Icon name="arrow-down" />}>
-                            <Picker.Item label="lbs" value="lbs" />
-                            <Picker.Item label="kg" value="kg" />
-                          </Picker>
-                        </View>
-                      </View>
-                    )}
-                  </Item>
-                  {props.errors.weight && <ValidationError error={props.errors.weight} />}
-                  {props.errors.pounds && <ValidationError error={props.errors.pounds} />}
-                  {props.errors.stones && <ValidationError error={props.errors.stones} />}
-                  {props.errors.weightUnit && <ValidationError error={props.errors.weightUnit} />}
-                </FieldWrapper>
+                <WeightQuestion formikProps={props as FormikProps<WeightData>} />
 
-                <FieldWrapper>
-                  <Item stackedLabel style={styles.textItemStyle}>
-                    <Label>{i18n.t('your-postcode')}</Label>
-                    <ValidatedTextInput
-                      placeholder={i18n.t('placeholder-postcode')}
-                      value={props.values.postcode}
-                      onChangeText={props.handleChange('postcode')}
-                      onBlur={props.handleBlur('postcode')}
-                      error={props.touched.postcode && props.errors.postcode}
-                      returnKeyType="next"
-                      onSubmitEditing={() => {
-                        /* this.passwordComponent.focus(); */
-                      }}
-                      autoCompleteType="postal-code"
-                    />
-                  </Item>
-                  {!!props.errors.postcode && <ValidationError error={props.errors.postcode} />}
-                </FieldWrapper>
+                <GenericTextField
+                  formikProps={props}
+                  label={i18n.t('your-postcode')}
+                  placeholder={i18n.t('placeholder-postcode')}
+                  name="postcode"
+                  inputProps={{ autoCompleteType: 'postal-code' }}
+                  showError
+                />
 
                 <DropdownField
                   selectedValue={props.values.everExposed}
@@ -587,68 +365,34 @@ export default class AboutYouScreen extends Component<AboutYouProps, State> {
                   error={props.touched.everExposed && props.errors.everExposed}
                 />
 
-                <FieldWrapper>
-                  <Item stackedLabel>
-                    <Label>{i18n.t('housebound-problems')}</Label>
-                    <Picker
-                      mode="dropdown"
-                      selectedValue={props.values.houseboundProblems}
-                      onValueChange={props.handleChange('houseboundProblems')}
-                      iosIcon={<Icon name="arrow-down" />}
-                      style={styles.picker}>
-                      <Picker.Item label={i18n.t('picker-no')} value="no" />
-                      <Picker.Item label={i18n.t('picker-yes')} value="yes" />
-                    </Picker>
-                  </Item>
-                </FieldWrapper>
+                <DropdownField
+                  label={i18n.t('housebound-problems')}
+                  selectedValue={props.values.houseboundProblems}
+                  onValueChange={props.handleChange('houseboundProblems')}
+                />
 
-                <FieldWrapper>
-                  <Item stackedLabel>
-                    <Label>{i18n.t('needs-help')}</Label>
-                    <Picker
-                      mode="dropdown"
-                      selectedValue={props.values.needsHelp}
-                      onValueChange={props.handleChange('needsHelp')}
-                      iosIcon={<Icon name="arrow-down" />}
-                      style={styles.picker}>
-                      <Picker.Item label={i18n.t('picker-no')} value="no" />
-                      <Picker.Item label={i18n.t('picker-yes')} value="yes" />
-                    </Picker>
-                  </Item>
-                </FieldWrapper>
+                <DropdownField
+                  label={i18n.t('needs-help')}
+                  selectedValue={props.values.needsHelp}
+                  onValueChange={props.handleChange('needsHelp')}
+                />
 
-                <FieldWrapper>
-                  <Item stackedLabel>
-                    <Label>{i18n.t('help-available')}</Label>
-                    <Picker
-                      mode="dropdown"
-                      selectedValue={props.values.helpAvailable}
-                      onValueChange={props.handleChange('helpAvailable')}
-                      iosIcon={<Icon name="arrow-down" />}
-                      style={styles.picker}>
-                      <Picker.Item label={i18n.t('picker-no')} value="no" />
-                      <Picker.Item label={i18n.t('picker-yes')} value="yes" />
-                    </Picker>
-                  </Item>
-                </FieldWrapper>
+                <DropdownField
+                  label={i18n.t('help-available')}
+                  selectedValue={props.values.helpAvailable}
+                  onValueChange={props.handleChange('helpAvailable')}
+                />
 
-                <FieldWrapper>
-                  <Item stackedLabel>
-                    <Label>{i18n.t('mobility-aid')}</Label>
-                    <Picker
-                      mode="dropdown"
-                      selectedValue={props.values.mobilityAid}
-                      onValueChange={props.handleChange('mobilityAid')}
-                      iosIcon={<Icon name="arrow-down" />}
-                      style={styles.picker}>
-                      <Picker.Item label={i18n.t('picker-no')} value="no" />
-                      <Picker.Item label={i18n.t('picker-yes')} value="yes" />
-                    </Picker>
-                  </Item>
-                </FieldWrapper>
+                <DropdownField
+                  label={i18n.t('mobility-aid')}
+                  selectedValue={props.values.mobilityAid}
+                  onValueChange={props.handleChange('mobilityAid')}
+                />
 
                 <ErrorText>{this.state.errorMessage}</ErrorText>
-                {!!Object.keys(props.errors).length && <ValidationErrors errors={props.errors as string[]} />}
+                {!!Object.keys(props.errors).length && props.submitCount > 0 && (
+                  <ValidationErrors errors={props.errors as string[]} />
+                )}
 
                 <BrandedButton
                   onPress={props.handleSubmit}
@@ -666,34 +410,7 @@ export default class AboutYouScreen extends Component<AboutYouProps, State> {
 }
 
 const styles = StyleSheet.create({
-  fieldRow: {
-    flexDirection: 'row',
-  },
-
   textItemStyle: {
     borderColor: 'transparent',
-  },
-
-  primaryField: {
-    flex: 6,
-  },
-
-  primaryFieldRow: {
-    flex: 6,
-    flexDirection: 'row',
-  },
-
-  tertiaryField: {
-    flex: 5,
-    marginRight: 8,
-  },
-
-  secondaryField: {
-    flex: 2,
-  },
-
-  picker: {
-    // width: '68%',
-    width: screenWidth - 16, // TODO: Fix width to something sensible
   },
 });

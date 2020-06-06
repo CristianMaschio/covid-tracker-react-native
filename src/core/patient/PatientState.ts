@@ -1,4 +1,4 @@
-import { AvatarName } from '../../utils/avatar';
+import { AvatarName } from '@covid/utils/avatar';
 
 export type PatientProfile = {
   name: string;
@@ -21,6 +21,9 @@ export type PatientStateType = {
   hasRaceEthnicityAnswer: boolean;
   hasPeriodAnswer: boolean;
   hasHormoneTreatmentAnswer: boolean;
+  hasVitaminAnswer: boolean;
+  hasAtopyAnswers: boolean;
+  hasHayfever: boolean;
 };
 
 const initPatientState = {
@@ -41,6 +44,8 @@ const initPatientState = {
   hasRaceEthnicityAnswer: true,
   hasPeriodAnswer: true,
   hasHormoneTreatmentAnswer: true,
+  hasVitaminAnswer: true,
+  hasAtopyAnswers: true,
 } as Partial<PatientStateType>;
 
 export const getInitialPatientState = (patientId: string): PatientStateType => {

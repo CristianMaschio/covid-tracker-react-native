@@ -25,6 +25,7 @@ type State = {
   items?: PickerItemProps[];
   options?: string[];
   dropdownWidth?: number;
+  dropdownFocus?: boolean;
 };
 
 class DropdownField extends React.Component<DropdownFieldProps, State> {
@@ -32,6 +33,7 @@ class DropdownField extends React.Component<DropdownFieldProps, State> {
     items: [],
     options: [],
     dropdownWidth: 0,
+    dropdownFocus: false,
   };
 
   componentDidMount() {
@@ -44,7 +46,17 @@ class DropdownField extends React.Component<DropdownFieldProps, State> {
   }
 
   setDropdownWidth = (event: any) => {
-    this.setState({ dropdownWidth: event.nativeEvent.layout.width });
+    if (this.state.dropdownWidth !== event.nativeEvent.layout.width) {
+      this.setState({ dropdownWidth: event.nativeEvent.layout.width });
+    }
+  };
+
+  handleOnDropdownWillShow = () => {
+    this.setState({ dropdownFocus: true });
+  };
+
+  handleOnDropdownWillHide = () => {
+    this.setState({ dropdownFocus: false });
   };
 
   onValueChange = (id: any, label: any) => {
@@ -56,19 +68,22 @@ class DropdownField extends React.Component<DropdownFieldProps, State> {
   render() {
     // Can be used as a yes/no dropdown field by leaving props.items blank.
     const { label, error, onlyPicker, selectedValue } = this.props;
-    const { options, dropdownWidth } = this.state;
+    const { options, dropdownWidth, dropdownFocus } = this.state;
+    const dropdownFocusStyle = dropdownFocus ? styles.dropdownOnFocus : {};
 
     return (
       <FieldWrapper style={styles.fieldWrapper}>
         {onlyPicker ? null : <Label style={styles.labelStyle}>{label}</Label>}
         <ModalDropdown
           style={styles.dropdownButton}
+          dropdownStyle={{ ...styles.dropdownStyle, width: dropdownWidth }}
+          dropdownTextStyle={styles.dropdownTextStyle}
           options={options}
           defaultValue={selectedValue}
           onSelect={this.onValueChange}
-          dropdownStyle={{ ...styles.dropdownStyle, width: dropdownWidth }}
-          dropdownTextStyle={styles.dropdownTextStyle}>
-          <View onLayout={this.setDropdownWidth} style={styles.dropdownButtonContainer}>
+          onDropdownWillShow={this.handleOnDropdownWillShow}
+          onDropdownWillHide={this.handleOnDropdownWillHide}>
+          <View onLayout={this.setDropdownWidth} style={{ ...styles.dropdownButtonContainer, ...dropdownFocusStyle }}>
             <Label style={styles.dropdownValue}>{selectedValue || 'Choose one of the options'}</Label>
             <DropdownIcon width={15} height={19} />
           </View>
@@ -125,6 +140,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 30,
     color: colors.primary,
+  },
+  dropdownOnFocus: {
+    borderWidth: 1,
+    borderColor: 'black',
+    borderStyle: 'solid',
+    borderRadius: 8,
   },
   dropdownValue: { color: colors.secondary },
 });
